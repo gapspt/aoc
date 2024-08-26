@@ -118,14 +118,17 @@ pub fn benny(input: &[u8]) -> Option<usize> {
         .take(14 - 1)
         .for_each(|c| filter ^= 1 << (c % 32));
 
-    input.windows(14).position(|w| {
+    if let Some(x) = input.windows(14).position(|w| {
         let first = w[0];
         let last = w[w.len() - 1];
         filter ^= 1 << (last % 32);
         let res = filter.count_ones() == 14 as u32;
         filter ^= 1 << (first % 32);
         res
-    })
+    }) {
+        return Some(x + 14);
+    }
+    return None;
 }
 
 struct ReverseIter {
@@ -185,7 +188,7 @@ pub fn david_a_perez(input: &[u8]) -> Option<usize> {
         }) {
             idx += pos + 1;
         } else if state.count_ones() == 14 as u32 {
-            return Some(idx);
+            return Some(idx + 14);
         }
     }
     return None;
