@@ -281,46 +281,46 @@ fn main() {
 
     for _ in 0..10 {
         let now = std::time::Instant::now();
-        black_box(simple(black_box(bytes)));
-        vec.push((now.elapsed(), "simple"));
+        let res = black_box(simple(black_box(bytes)));
+        vec.push((now.elapsed(), "simple", res));
     }
 
     for _ in 0..10 {
         let now = std::time::Instant::now();
-        black_box(faster(black_box(bytes)));
-        vec.push((now.elapsed(), "faster"));
+        let res = black_box(faster(black_box(bytes)));
+        vec.push((now.elapsed(), "faster", res));
     }
 
     for _ in 0..10 {
         let now = std::time::Instant::now();
-        black_box(faster_vec(black_box(bytes)));
-        vec.push((now.elapsed(), "faster_vec"));
+        let res = black_box(faster_vec(black_box(bytes)));
+        vec.push((now.elapsed(), "faster_vec", res));
     }
 
     for _ in 0..10 {
         let now = std::time::Instant::now();
-        black_box(faster_arr(black_box(bytes)));
-        vec.push((now.elapsed(), "faster_arr"));
+        let res = black_box(faster_arr(black_box(bytes)));
+        vec.push((now.elapsed(), "faster_arr", res));
     }
 
     for _ in 0..10 {
         let now = std::time::Instant::now();
-        black_box(benny(black_box(bytes)));
-        vec.push((now.elapsed(), "benny"));
+        let res = black_box(benny(black_box(bytes)));
+        vec.push((now.elapsed(), "benny", res.unwrap()));
     }
 
     for _ in 0..10 {
         let now = std::time::Instant::now();
-        black_box(david_a_perez(black_box(bytes)));
-        vec.push((now.elapsed(), "david_a_perez"));
+        let res = black_box(david_a_perez(black_box(bytes)));
+        vec.push((now.elapsed(), "david_a_perez", res.unwrap()));
     }
 
     for _ in 0..10 {
         let now = std::time::Instant::now();
-        black_box(david_a_perez_async(black_box(bytes), 18));
-        vec.push((now.elapsed(), "dap_async"));
+        let res = black_box(david_a_perez_async(black_box(bytes), 18));
+        vec.push((now.elapsed(), "dap_async", res.unwrap()));
     }
 
-    println!("{}", vec.iter().map(|x| format!("\n{} {:?}", x.1, x.0)).collect::<String>());
+    println!("{}", vec.iter().map(|x| format!("\n{} {:?} {:?}", x.1, x.2, x.0)).collect::<String>());
 }
 
