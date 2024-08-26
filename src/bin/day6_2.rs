@@ -111,6 +111,31 @@ fn david_a_perez_async(data: &'static [u8], cpus: usize) -> Option<usize> {
     return join(rx, cpus);
 }
 
+fn gaps_async(data: &'static [u8], cpus: usize) -> Option<usize> {
+    let regions = data.len() / cpus;
+    let (tx, rx) = std::sync::mpsc::channel();
+    for i in 0..cpus {
+        let start = if i == 0 { 0 } else { i * regions - 14 };
+        let inner_tx = tx.clone();
+        let mut len = regions;
+
+        if i == regions - 1 {
+            len = data.len();
+        }
+
+        std::thread::spawn(move || {
+            let x = gaps_unsafe(&data[start..start + len]);
+            if x > 0 {
+                _ = inner_tx.send(Some(x + start));
+            } else {
+                _ = inner_tx.send(None);
+            }
+        });
+    }
+
+    return join(rx, cpus);
+}
+
 pub fn benny(input: &[u8]) -> Option<usize> {
     let mut filter = 0u32;
     input
@@ -270,6 +295,94 @@ pub fn david_a_perez_proc(input: &[u8]) -> Option<usize> {
     return None;
 }
 
+fn gaps(str: &[u8]) -> u32 {
+    let len = str.len() as u32;
+    let mut char_found_indexes: [u32; 256] = [0; 256];
+    let mut start = 0;
+
+    // This line seems to speed up the execution, not sure why. Probably pushes the array and the string
+    // into a higher CPU cache, but sure why that wouldn't happen anyway in the first loop iteration...
+    // Probably it doesn't speed up at all and it's just my imagination, but I'm leaving it in anyway.
+    char_found_indexes[str[0] as usize] = 0;
+
+    let mut i = 1;
+    while i < len {
+        let c = str[i as usize];
+        let last_found = char_found_indexes[c as usize];
+        if last_found >= start {
+            start = last_found + 1;
+        }
+        if i - start == 13 {
+            return i + 1;
+        }
+        char_found_indexes[c as usize] = i;
+        i += 1;
+    }
+    return 0;
+}
+
+fn gaps_reversed(str: &[u8]) -> i32 {
+    let len = str.len() as i32;
+    let mut char_found_indexes: [i32; 256] = [0; 256];
+
+    // This line seems to speed up the execution, not sure why. Probably pushes the array and the string
+    // into a higher CPU cache, but sure why that wouldn't happen anyway in the first loop iteration...
+    // Probably it doesn't speed up at all and it's just my imagination, but I'm leaving it in anyway.
+    char_found_indexes[str[0] as usize] = 0;
+
+    let mut i = 0;
+    let mut j;
+    while i < len {
+        j = i + 13;
+        let mut stop = true;
+        while j >= i {
+            let c = str[j as usize];
+            let last_found = char_found_indexes[c as usize];
+            if last_found > j {
+                i = j + 1;
+                stop = false;
+                break;
+            }
+            char_found_indexes[c as usize] = j;
+            j += -1;
+        }
+        if stop {
+            return i + 14;
+        }
+    }
+    return 0;
+}
+
+fn gaps_unsafe(input_orig: &[u8]) -> usize {
+    unsafe {
+        let start = input_orig.as_ptr();
+        let mut input = start as *mut u8;
+        let end = input.add(input_orig.len());
+        let mut char_found_indexes_orig: [*mut u8; 256] = [input; 256];
+        let char_found_indexes = char_found_indexes_orig.as_mut_ptr();
+    
+        while input < end {
+            let mut it = input.add(13);
+            let mut stop = true;
+            while it >= input {
+                let c = *it;
+                let last_found = *char_found_indexes.add(c as usize);
+                if last_found > it {
+                    input = it.add(1);
+                    stop = false;
+                    break;
+                }
+                *char_found_indexes.add(c as usize) = it;
+                it = it.offset(-1);
+            }
+            if stop {
+                return input.offset_from(start) as usize + 14;
+            }
+        }
+        return 0;
+    }
+}
+
 fn main() {
 
     let string = std::fs::read_to_string("long").unwrap();
@@ -319,6 +432,30 @@ fn main() {
         let now = std::time::Instant::now();
         let res = black_box(david_a_perez_async(black_box(bytes), 18));
         vec.push((now.elapsed(), "dap_async", res.unwrap()));
+    }
+
+    for _ in 0..10 {
+        let now = std::time::Instant::now();
+        let res = black_box(gaps(black_box(bytes)));
+        vec.push((now.elapsed(), "gaps", res as usize));
+    }
+
+    for _ in 0..10 {
+        let now = std::time::Instant::now();
+        let res = black_box(gaps_reversed(black_box(bytes)));
+        vec.push((now.elapsed(), "gaps_reversed", res as usize));
+    }
+
+    for _ in 0..10 {
+        let now = std::time::Instant::now();
+        let res = black_box(gaps_unsafe(black_box(bytes)));
+        vec.push((now.elapsed(), "gaps_unsafe", res as usize));
+    }
+
+    for _ in 0..10 {
+        let now = std::time::Instant::now();
+        let res = black_box(gaps_async(black_box(bytes), 18));
+        vec.push((now.elapsed(), "gaps_async", res.unwrap()));
     }
 
     println!("{}", vec.iter().map(|x| format!("\n{} {:?} {:?}", x.1, x.2, x.0)).collect::<String>());
